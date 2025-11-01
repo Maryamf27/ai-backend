@@ -80,13 +80,30 @@ const model = genAI.getGenerativeModel({
 });
 
 
+// async function generateContent(prompt) {
+//     const result = await model.generateContent(prompt);
+
+//     console.log(result.response.text())
+
+//     return result.response.text();
+
+// }
+
 async function generateContent(prompt) {
+  try {
+    console.log("🔹 Generating content for prompt length:", prompt?.length || 0);
+
+    // Send prompt to Gemini
     const result = await model.generateContent(prompt);
+    const text = result.response.text();
 
-    console.log(result.response.text())
-
-    return result.response.text();
-
+    console.log("✅ Gemini response (first 100 chars):", text.slice(0, 100));
+    return text;
+  } catch (error) {
+    console.error("❌ Error in generateContent:", error);
+    // Return a readable error instead of crashing
+    return `Gemini API Error: ${error.message}`;
+  }
 }
 
-module.exports = generateContent    
+module.exports = generateContent;
