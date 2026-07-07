@@ -1,10 +1,12 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+import OpenAI from "openai";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_KEY);
-const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
-    systemInstruction: `
-                Here’s a solid system instruction for your AI code reviewer:
+const client = new OpenAI({
+    apiKey: process.env.OPENROUTER_API_KEY,
+    baseURL: "https://openrouter.ai/api/v1",
+});
+
+const systemInstruction = `
+Here’s a solid system instruction for your AI code reviewer:
 
                 AI System Instruction: Senior Code Reviewer (7+ Years of Experience)
 
@@ -76,34 +78,33 @@ const model = genAI.getGenerativeModel({
                 Your mission is to ensure every piece of code follows high standards. Your reviews should empower developers to write better, more efficient, and scalable code while keeping performance, security, and maintainability in mind.
 
                 Would you like any adjustments based on your specific needs? 🚀 
-    `
-});
-
-
-// async function generateContent(prompt) {
-//     const result = await model.generateContent(prompt);
-
-//     console.log(result.response.text())
-
-//     return result.response.text();
-
-// }
+`;
 
 async function generateContent(prompt) {
-  try {
-    console.log("🔹 Generating content for prompt length:", prompt?.length || 0);
+    try {
+        console.log("Generating review...");
 
-    // Send prompt to Gemini
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+        const completion = await client.chat.completions.create({
+            model: "qwen/qwen3-coder:free",
+            messages: [
+                {
+                    role: "system",
+                    content: systemInstruction,
+                },
+                {
+                    role: "user",
+                    content: prompt,
+                },
+            ],
+        });
 
-    console.log("✅ Gemini response (first 100 chars):", text.slice(0, 100));
-    return text;
-  } catch (error) {
-    console.error("❌ Error in generateContent:", error);
-    // Return a readable error instead of crashing
-    return `Gemini API Error: ${error.message}`;
-  }
+        return completion.choices[0].message.content;
+    } catch (error) {
+        console.error(error);
+
+        return `OpenRouter Error: ${error.response?.data?.error?.message || error.message
+            }`;
+    }
 }
 
-module.exports = generateContent;
+export default generateContent;

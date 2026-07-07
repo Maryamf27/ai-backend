@@ -1,21 +1,21 @@
-const express = require('express');
-const aiRoutes = require('./routes/ai.routes')
-const cors = require('cors')
+import express, { json } from 'express';
+import aiRoutes from './routes/ai.routes';
+import cors from 'cors';
 
 const app = express()
 
 app.use(cors())
 
 
-app.use(express.json())
+app.use(json())
 
 app.get('/', (req, res) => {
     res.send('Hello World')
 })
 app.get("/check-key", (req, res) => {
-  res.send(`Gemini Key: ${process.env.GOOGLE_GEMINI_KEY ? "Loaded ✅" : "Missing ❌"}`);
+  res.send(`OpenRouter Key: ${process.env.OPENROUTER_API_KEY ? "Loaded ✅" : "Missing ❌"}`);
 });
 
 app.use('/ai', aiRoutes)
 
-module.exports = app
+export default app
