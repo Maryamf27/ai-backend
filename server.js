@@ -1,13 +1,15 @@
-require('dotenv').config();
-import app from './src/app';
+import dotenv from "dotenv";
+import app from "./src/app.js";
 
-// ✅ Only start a server if we're running locally
-if (require.main === module) {
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(`✅ Server running locally at http://localhost:${PORT}`);
-  });
-}
+dotenv.config();
+console.log(process.env.OPENROUTER_API_KEY);
 
-// ✅ Always export the app for Vercel
+
+// Only start a server if we're running locally
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`✅ Server running locally at http://localhost:${PORT}`);
+});
+
 export default app;

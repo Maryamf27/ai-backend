@@ -1,5 +1,5 @@
 import express, { json } from 'express';
-import aiRoutes from './routes/ai.routes';
+import aiRoutes from './routes/ai.routes.js';
 import cors from 'cors';
 
 const app = express()
