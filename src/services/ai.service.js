@@ -100,6 +100,9 @@ async function generateContent(prompt) {
 
         return completion.choices[0].message.content;
     } catch (error) {
+        console.error("Status:", error.status);
+        console.error("Message:", error.message);
+        console.error("Response:", error.response?.data);
         console.error(error);
 
         return `OpenRouter Error: ${error.response?.data?.error?.message || error.message
