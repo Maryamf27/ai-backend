@@ -109,6 +109,13 @@ async function callModel(model, prompt, maxRetries = 3) {
                     { role: "user", content: prompt },
                 ],
             });
+
+            // TEMP DEBUG - remove once working
+            if (!completion?.choices?.[0]?.message?.content) {
+                console.log("DEBUG malformed completion:", JSON.stringify(completion, null, 2));
+                throw new Error(`Empty/malformed response from ${model}`);
+            }
+
             return completion.choices[0].message.content;
         } catch (error) {
             const status = error.status || error.response?.status;
