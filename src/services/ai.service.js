@@ -91,55 +91,21 @@ const MODEL_FALLBACKS = [
     "deepseek/deepseek-r1:free",
 ];
 
-function sleep(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-}
+async function callModel(model, prompt) {
+    const completion = await client.chat.completions.create({
+        model,
+        messages: [
+            { role: "system", content: systemInstruction },
+            { role: "user", content: prompt },
+        ],
+    });
 
-async function callModel(model, prompt, maxRetries = 3) {
-    // TEMP DEBUG - remove once working
-    const key = process.env.OPENROUTER_API_KEY;
-    console.log("DEBUG key loaded:", key ? `${key.slice(0, 10)}... (length ${key.length})` : "MISSING/UNDEFINED");
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-        try {
-            const completion = await client.chat.completions.create({
-                model,
-                messages: [
-                    { role: "system", content: systemInstruction },
-                    { role: "user", content: prompt },
-                ],
-            });
-
-            // TEMP DEBUG - remove once working
-            if (!completion?.choices?.[0]?.message?.content) {
-                console.log("DEBUG malformed completion:", JSON.stringify(completion, null, 2));
-                throw new Error(`Empty/malformed response from ${model}`);
-            }
-
-            return completion.choices[0].message.content;
-        } catch (error) {
-            const status = error.status || error.response?.status;
-            // TEMP DEBUG - remove once working
-            console.log("DEBUG raw error:", JSON.stringify({
-                status,
-                message: error.message,
-                responseData: error.response?.data,
-                errorError: error.error,
-            }, null, 2));
-
-            if (status === 429 && attempt < maxRetries - 1) {
-                // Honor Retry-After if present, otherwise exponential backoff + jitter
-                const retryAfter = error.headers?.["retry-after"];
-                const delay = retryAfter
-                    ? Number(retryAfter) * 1000
-                    : 2 ** attempt * 1000 + Math.random() * 500;
-                console.warn(`429 on ${model}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1})`);
-                await sleep(delay);
-                continue;
-            }
-            throw error; // not a 429, or out of retries for this model
-        }
+    if (!completion?.choices?.[0]?.message?.content) {
+        console.log("Malformed completion from", model, JSON.stringify(completion));
+        throw new Error(`Empty/malformed response from ${model}`);
     }
+
+    return completion.choices[0].message.content;
 }
 
 async function generateContent(prompt) {
