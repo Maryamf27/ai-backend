@@ -86,9 +86,7 @@ Here’s a solid system instruction for your AI code reviewer:
 
 // Free models to try, in order. If one is rate-limited (429), fall back to the next.
 const MODEL_FALLBACKS = [
-    "qwen/qwen3-coder:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "deepseek/deepseek-r1:free",
+    "deepseek/deepseek-r1"
 ];
 
 async function callModel(model, prompt) {
@@ -119,7 +117,7 @@ async function generateContent(prompt) {
             lastError = error;
             const status = error.status || error.response?.status;
             console.error(`Model ${model} failed. Status:`, status, "Message:", error.message);
-            if (status === 429) {
+            if (status === 429 || status === 404) {
                 console.warn(`Falling back from ${model} to next model...`);
                 continue; // try next free model
             }
