@@ -1,3 +1,7 @@
+import dotenv from "dotenv";
+
+dotenv.config();
+
 import OpenAI from "openai";
 
 const client = new OpenAI({
@@ -80,34 +84,78 @@ Here’s a solid system instruction for your AI code reviewer:
                 Would you like any adjustments based on your specific needs? 🚀 
 `;
 
-async function generateContent(prompt) {
-    try {
-        console.log("Generating review...");
+// Free models to try, in order. If one is rate-limited (429), fall back to the next.
+const MODEL_FALLBACKS = [
+    "qwen/qwen3-coder:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "deepseek/deepseek-r1:free",
+];
 
-        const completion = await client.chat.completions.create({
-            model: "qwen/qwen3-coder:free",
-            messages: [
-                {
-                    role: "system",
-                    content: systemInstruction,
-                },
-                {
-                    role: "user",
-                    content: prompt,
-                },
-            ],
-        });
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-        return completion.choices[0].message.content;
-    } catch (error) {
-        console.error("Status:", error.status);
-        console.error("Message:", error.message);
-        console.error("Response:", error.response?.data);
-        console.error(error);
+async function callModel(model, prompt, maxRetries = 3) {
+    // TEMP DEBUG - remove once working
+    const key = process.env.OPENROUTER_API_KEY;
+    console.log("DEBUG key loaded:", key ? `${key.slice(0, 10)}... (length ${key.length})` : "MISSING/UNDEFINED");
 
-        return `OpenRouter Error: ${error.response?.data?.error?.message || error.message
-            }`;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            const completion = await client.chat.completions.create({
+                model,
+                messages: [
+                    { role: "system", content: systemInstruction },
+                    { role: "user", content: prompt },
+                ],
+            });
+            return completion.choices[0].message.content;
+        } catch (error) {
+            const status = error.status || error.response?.status;
+            // TEMP DEBUG - remove once working
+            console.log("DEBUG raw error:", JSON.stringify({
+                status,
+                message: error.message,
+                responseData: error.response?.data,
+                errorError: error.error,
+            }, null, 2));
+
+            if (status === 429 && attempt < maxRetries - 1) {
+                // Honor Retry-After if present, otherwise exponential backoff + jitter
+                const retryAfter = error.headers?.["retry-after"];
+                const delay = retryAfter
+                    ? Number(retryAfter) * 1000
+                    : 2 ** attempt * 1000 + Math.random() * 500;
+                console.warn(`429 on ${model}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1})`);
+                await sleep(delay);
+                continue;
+            }
+            throw error; // not a 429, or out of retries for this model
+        }
     }
+}
+
+async function generateContent(prompt) {
+    console.log("Generating review...");
+
+    let lastError;
+    for (const model of MODEL_FALLBACKS) {
+        try {
+            return await callModel(model, prompt);
+        } catch (error) {
+            lastError = error;
+            const status = error.status || error.response?.status;
+            console.error(`Model ${model} failed. Status:`, status, "Message:", error.message);
+            if (status === 429) {
+                console.warn(`Falling back from ${model} to next model...`);
+                continue; // try next free model
+            }
+            break; // non-429 error, don't bother trying other models
+        }
+    }
+
+    console.error(lastError);
+    return `OpenRouter Error: ${lastError?.response?.data?.error?.message || lastError?.message}`;
 }
 
 export default generateContent;
